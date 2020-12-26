@@ -5,10 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow
 import tensorflow.compat.v1 as tf
-
 tf.disable_v2_behavior()
 
-env = gym.make('Acrobot-v1')
+env = gym.make('CartPole-v1')
 np.random.seed(1)
 weights_initializer = tensorflow.initializers.GlorotUniform()
 
@@ -122,11 +121,11 @@ state_size = 6
 action_size = 3
 actual_actions_size = env.action_space.n
 
-max_episodes = 1500
+max_episodes = 5000
 max_steps = 501
 discount_factor = 0.99
-actor_lr = 0.00005
-critic_lr = 0.0005
+actor_lr = 0.0001
+critic_lr = 0.001
 learning_rate_decay = 0.99
 
 render = False
@@ -138,11 +137,12 @@ critic = Critic(state_size, critic_lr, "acrobot_critic")
 
 start_time = time.time()
 
-reward_size = 1000
-saver = tf.train.Saver()
+
 # Start training the agent with REINFORCE algorithm
 with tf.Session() as sess:
-    summary = tf.summary.FileWriter("../tensorboard/actor_critic/acrobot", sess.graph)
+    saver = tf.train.Saver()
+    summary = tf.summary.FileWriter("../tensorboard/ft/acrobot_cartpole", sess.graph)
+    saver.restore(sess=sess, save_path='../data/acrobot/acrobot.h')
     sess.run(tf.global_variables_initializer())
     solved = False
 
@@ -150,8 +150,6 @@ with tf.Session() as sess:
     episode_rewards = np.zeros(max_episodes)
     average_rewards = 0.0
 
-    max_iters = 2500
-    first = True
     for episode in range(max_episodes):
         state = env.reset()
         state = np.append(state, np.zeros(6 - env.observation_space.shape[0]))
@@ -159,8 +157,8 @@ with tf.Session() as sess:
 
         done = False
         iter = 0
+        while not done and iter < max_steps:
 
-        while not done and iter < max_iters:
             predict_feed_dict = {actor.state: state}
             actions_distribution = sess.run(actor.actions_distribution, predict_feed_dict)
 
@@ -169,15 +167,10 @@ with tf.Session() as sess:
                 action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
             next_state, reward, done, _ = env.step(action)
             episode_rewards[episode] += reward
+            reward = reward if not done else -10
 
             next_state = np.append(next_state, np.zeros(6 - env.observation_space.shape[0]))
             next_state = next_state.reshape([1, state_size])
-
-            if reward == -1:
-                done = False
-            else:
-                reward = reward_size
-                max_iters = max(500, max_iters - 500)
 
             if render and episode % 10 == 0:
                 env.render()
@@ -186,9 +179,7 @@ with tf.Session() as sess:
             action_one_hot[action] = 1
             train_actor_and_critic(actor, critic, state, next_state, done, reward, discount_factor, actor_lr, critic_lr,
                                    action_one_hot)
-            iter += 1
-            if iter == max_iters:
-                done = True
+
             if done:
                 episode_summary = tf.Summary()
                 episode_summary.value.add(tag="Rewards", simple_value=episode_rewards[episode])
@@ -197,23 +188,24 @@ with tf.Session() as sess:
                 actor_lr = actor_lr * learning_rate_decay
                 critic_lr = critic_lr * learning_rate_decay
 
-                if episode > 48:
+                if episode > 98:
                     # Check if solved
-                    average_rewards = np.mean(episode_rewards[(episode - 49):episode + 1])
-                print("Episode {} Reward: {} Average over 50 episodes: {}".format(episode, episode_rewards[episode],
-                                                                                  round(average_rewards, 2)))
-                print(f"took total of {iter} iters")
-                if episode_rewards[episode] > -115:
+                    average_rewards = np.mean(episode_rewards[(episode - 99):episode + 1])
+                print("Episode {} Reward: {} Average over 1000 episodes: {}".format(episode, episode_rewards[episode],
+                                                                                    round(average_rewards, 2)))
+
+                if average_rewards > 475:
                     print('Solved at episode: ' + str(episode))
                     elapsed_time = time.time() - start_time
                     print(f"elapsed_time: {elapsed_time}")
                     solved = True
                 break
             state = next_state
+            iter += 1
 
         if solved:
             break
-    saver.save(sess, save_path='../data/acrobot/acrobot.h')
+    saver.save(sess, save_path='../data/ft/cartpole.h')
 
 plt.figure(figsize=(20, 10))
 non_zero_rewards = episode_rewards[:episode + 1]
