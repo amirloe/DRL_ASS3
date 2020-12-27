@@ -204,7 +204,7 @@ with tf.Session() as sess:
 
         if solved:
             break
-    saver.save(sess, save_path='../data/cartpole.h')
+    saver.save(sess, save_path='../data/cartpole/cartpole.h')
 
 plt.figure(figsize=(20, 10))
 non_zero_rewards = episode_rewards[:episode + 1]

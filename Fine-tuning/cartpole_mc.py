@@ -157,15 +157,17 @@ render = False
 
 # Initialize the AC networks
 tf.reset_default_graph()
-actor = Actor(state_size, action_size, "mc_actor")
-critic = Critic(state_size, critic_lr, "mc_critic")
+actor = Actor(state_size, action_size, "cartpole_actor")
+critic = Critic(state_size, critic_lr, "cartpole_critic")
 
 start_time = time.time()
 
-saver = tf.train.Saver()
+
 
 with tf.Session() as sess:
+    saver = tf.train.Saver()
     summary = tf.summary.FileWriter("../tensorboard/actor_critic/mc", sess.graph)
+    saver.restore(sess=sess, save_path='../data/cartpole/cartpole.h')
     sess.run(tf.global_variables_initializer())
     solved = False
 
@@ -250,7 +252,7 @@ with tf.Session() as sess:
 
         if solved:
             break
-        saver.save(sess, save_path='../data/mc/mc.h')
+        saver.save(sess, save_path='../data/ft/mc/mc.h')
 
     plt.figure(figsize=(20, 10))
     non_zero_rewards = episode_rewards[:episode + 1]
