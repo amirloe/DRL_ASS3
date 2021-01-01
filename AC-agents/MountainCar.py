@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow
 import tensorflow.compat.v1 as tf
 import sklearn.preprocessing
-
+import saver
 tf.disable_v2_behavior()
 
 env = gym.make('MountainCarContinuous-v0')
@@ -33,7 +33,6 @@ def scale_state(state_to_scale):  # requires input shape=(2,)
     scaled = scaler.transform([state_to_scale[0]])
     return scaled
 
-
 class Actor:
     def __init__(self, state_size, action_size, name='actor'):
         self.state_size = state_size
@@ -44,20 +43,18 @@ class Actor:
             self.action = tf.placeholder(tf.int32, [self.action_size], name="action")
             self.learning_rate = tf.placeholder(tf.float32, name="learning_rate")
             self.R_t = tf.placeholder(tf.float32, name="total_rewards")
+            self.W1 = tf.get_variable("W1", [self.state_size, 24],
+                                      initializer=tensorflow.initializers.variance_scaling(seed=0))
+            self.b1 = tf.get_variable("b1", [24], initializer=tf.zeros_initializer())
 
-            number_of_layers = 4
-            weights = [256, 160, 128, 64, 64]
+            self.W2 = tf.get_variable("W2", [24, self.action_size],
+                                      initializer=tensorflow.initializers.variance_scaling(seed=0))
+            self.b2 = tf.get_variable("b2", [self.action_size], initializer=tf.zeros_initializer())
 
-            h = tf.layers.dense(units=weights[0], inputs=self.state, kernel_initializer=weights_initializer,
-                                activation=tf.nn.relu)
+            self.Z1 = tf.add(tf.matmul(self.state, self.W1), self.b1)
+            self.A1 = tf.nn.relu(self.Z1)
 
-            for idx in range(1, number_of_layers):
-                h = tf.layers.dense(units=weights[idx], inputs=h, kernel_initializer=weights_initializer,
-                                    activation=tf.nn.relu)
-
-            self.output = tf.layers.dense(units=action_size, inputs=h, kernel_initializer=weights_initializer,
-                                          activation=None)
-
+            self.output = tf.add(tf.matmul(self.A1, self.W2), self.b2)
             self.actions_distribution = tf.squeeze(tf.nn.softmax(self.output))
             self.neg_log_prob = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.output, labels=self.action)
             self.loss = tf.reduce_mean(self.neg_log_prob * self.R_t)
@@ -88,18 +85,15 @@ class Critic:
             self.R_t = tf.placeholder(tf.float32, name="total_rewards")
             self.learning_rate = tf.placeholder(tf.float32, name="learning_rate")
 
-            number_of_layers = 4
-            weights = [256, 160, 128, 64, 128]
+            self.W1 = tf.get_variable("W1", [self.state_size, 24],
+                                      initializer=tensorflow.initializers.variance_scaling(seed=0))
+            self.b1 = tf.get_variable("b1", [24], initializer=tf.zeros_initializer())
+            self.W2 = tf.get_variable("W2", [24, 1], initializer=tensorflow.initializers.variance_scaling(seed=0))
+            self.b2 = tf.get_variable("b2", [1], initializer=tf.zeros_initializer())
 
-            h = tf.layers.dense(units=weights[0], inputs=self.state, kernel_initializer=weights_initializer,
-                                activation=tf.nn.relu)
-
-            for idx in range(1, number_of_layers):
-                h = tf.layers.dense(units=weights[idx], inputs=h, kernel_initializer=weights_initializer,
-                                    activation=tf.nn.relu)
-
-            self.output = tf.layers.dense(units=1, inputs=h, kernel_initializer=weights_initializer,
-                                          activation=None)
+            self.Z1 = tf.add(tf.matmul(self.state, self.W1), self.b1)
+            self.A1 = tf.nn.relu(self.Z1)
+            self.output = tf.add(tf.matmul(self.A1, self.W2), self.b2)
 
             self.square_loss = tf.squared_difference(tf.squeeze(self.output), self.R_t)
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.square_loss)
@@ -146,9 +140,9 @@ action_size = 3
 max_episodes = 5000
 max_steps = 1000
 discount_factor = 0.99
-actor_lr = 0.0001
-critic_lr = 0.001
-learning_rate_decay = 0.97
+actor_lr = 0.001
+critic_lr = 0.005
+learning_rate_decay = 1
 
 EXPLOITING_PHASE_LENGTH = 7
 epsilon = 1
@@ -162,7 +156,7 @@ critic = Critic(state_size, critic_lr, "mc_critic")
 
 start_time = time.time()
 
-saver = tf.train.Saver()
+tf_saver = tf.train.Saver()
 
 with tf.Session() as sess:
     summary = tf.summary.FileWriter("../tensorboard/actor_critic/mc", sess.graph)
@@ -244,13 +238,15 @@ with tf.Session() as sess:
                     elapsed_time = time.time() - start_time
                     print(f"elapsed_time: {elapsed_time}")
                     solved = True
+                    saver.save_weights(sess, actor, critic, 'mc')
                 break
             state = next_state
             max_episodes = max(max_episodes - 250, 1000)
 
         if solved:
             break
-        saver.save(sess, save_path='../data/mc/mc.h')
+        tf_saver.save(sess, save_path='../data/mc/mc.h')
+
 
     plt.figure(figsize=(20, 10))
     non_zero_rewards = episode_rewards[:episode + 1]

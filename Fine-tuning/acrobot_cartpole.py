@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow
 import tensorflow.compat.v1 as tf
+import loader
 tf.disable_v2_behavior()
 
 env = gym.make('CartPole-v1')
@@ -22,20 +23,18 @@ class Actor:
             self.action = tf.placeholder(tf.int32, [self.action_size], name="action")
             self.learning_rate = tf.placeholder(tf.float32, name="learning_rate")
             self.R_t = tf.placeholder(tf.float32, name="total_rewards")
+            self.W1 = tf.get_variable("W1", [self.state_size, 24],
+                                      initializer=tensorflow.initializers.variance_scaling(seed=0))
+            self.b1 = tf.get_variable("b1", [24], initializer=tf.zeros_initializer())
 
-            number_of_layers = 4
-            weights = [256, 160, 128, 64, 64]
+            self.W2 = tf.get_variable("W2", [24, self.action_size],
+                                      initializer=tensorflow.initializers.variance_scaling(seed=0))
+            self.b2 = tf.get_variable("b2", [self.action_size], initializer=tf.zeros_initializer())
 
-            h = tf.layers.dense(units=weights[0], inputs=self.state, kernel_initializer=weights_initializer,
-                                activation=tf.nn.relu)
+            self.Z1 = tf.add(tf.matmul(self.state, self.W1), self.b1)
+            self.A1 = tf.nn.relu(self.Z1)
 
-            for idx in range(1, number_of_layers):
-                h = tf.layers.dense(units=weights[idx], inputs=h, kernel_initializer=weights_initializer,
-                                    activation=tf.nn.relu)
-
-            self.output = tf.layers.dense(units=action_size, inputs=h, kernel_initializer=weights_initializer,
-                                          activation=None)
-
+            self.output = tf.add(tf.matmul(self.A1, self.W2), self.b2)
             self.actions_distribution = tf.squeeze(tf.nn.softmax(self.output))
             self.neg_log_prob = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.output, labels=self.action)
             self.loss = tf.reduce_mean(self.neg_log_prob * self.R_t)
@@ -44,7 +43,8 @@ class Actor:
 
     def predict(self, state):
         sess = tf.get_default_session()
-        return sess.run(self.actions_distribution, {self.state: state})
+        predict_feed_dict = {self.state: state}
+        return sess.run(self.actions_distribution, predict_feed_dict)
 
     def train(self, state, td_error, action_one_hot, actor_lr):
         sess = tf.get_default_session()
@@ -65,18 +65,15 @@ class Critic:
             self.R_t = tf.placeholder(tf.float32, name="total_rewards")
             self.learning_rate = tf.placeholder(tf.float32, name="learning_rate")
 
-            number_of_layers = 4
-            weights = [256, 160, 128, 64, 128]
+            self.W1 = tf.get_variable("W1", [self.state_size, 24],
+                                      initializer=tensorflow.initializers.variance_scaling(seed=0))
+            self.b1 = tf.get_variable("b1", [24], initializer=tf.zeros_initializer())
+            self.W2 = tf.get_variable("W2", [24, 1], initializer=tensorflow.initializers.variance_scaling(seed=0))
+            self.b2 = tf.get_variable("b2", [1], initializer=tf.zeros_initializer())
 
-            h = tf.layers.dense(units=weights[0], inputs=self.state, kernel_initializer=weights_initializer,
-                                activation=tf.nn.relu)
-
-            for idx in range(1, number_of_layers):
-                h = tf.layers.dense(units=weights[idx], inputs=h, kernel_initializer=weights_initializer,
-                                    activation=tf.nn.relu)
-
-            self.output = tf.layers.dense(units=1, inputs=h, kernel_initializer=weights_initializer,
-                                          activation=None)
+            self.Z1 = tf.add(tf.matmul(self.state, self.W1), self.b1)
+            self.A1 = tf.nn.relu(self.Z1)
+            self.output = tf.add(tf.matmul(self.A1, self.W2), self.b2)
 
             self.square_loss = tf.squared_difference(tf.squeeze(self.output), self.R_t)
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.square_loss)
@@ -84,13 +81,12 @@ class Critic:
     def predict(self, state):
         sess = tf.get_default_session()
         predict_feed_dict = {self.state: state}
-        return sess.run(self.output, {self.state: state})
+        return sess.run(self.output, predict_feed_dict)
 
     def train(self, state, target, lr):
         sess = tf.get_default_session()
         update_feed_dict = {self.state: state, self.R_t: target, self.learning_rate: lr}
         sess.run([self.optimizer, self.square_loss], update_feed_dict)
-
 
 def train_actor_and_critic(actor, critic, state, next_state, done, reward, discount_factor, actor_lr, critic_lr,
                            action_one_hot):
@@ -124,9 +120,9 @@ actual_actions_size = env.action_space.n
 max_episodes = 5000
 max_steps = 501
 discount_factor = 0.99
-actor_lr = 0.0001
-critic_lr = 0.001
-learning_rate_decay = 0.99
+actor_lr = 0.001
+critic_lr = 0.005
+learning_rate_decay = 1
 
 render = False
 
@@ -140,10 +136,11 @@ start_time = time.time()
 
 # Start training the agent with REINFORCE algorithm
 with tf.Session() as sess:
-    saver = tf.train.Saver()
+    tf_saver = tf.train.Saver()
     summary = tf.summary.FileWriter("../tensorboard/ft/acrobot_cartpole", sess.graph)
-    saver.restore(sess=sess, save_path='../data/acrobot/acrobot.h')
+    # tf_saver.restore(sess=sess, save_path='../data/acrobot/acrobot.h')
     sess.run(tf.global_variables_initializer())
+    loader.load_weights(sess,actor,critic,'acrobot')
     solved = False
 
     # First, generate some data for initial rewards training
@@ -191,7 +188,7 @@ with tf.Session() as sess:
                 if episode > 98:
                     # Check if solved
                     average_rewards = np.mean(episode_rewards[(episode - 99):episode + 1])
-                print("Episode {} Reward: {} Average over 1000 episodes: {}".format(episode, episode_rewards[episode],
+                print("Episode {} Reward: {} Average over 100 episodes: {}".format(episode, episode_rewards[episode],
                                                                                     round(average_rewards, 2)))
 
                 if average_rewards > 475:
@@ -205,7 +202,7 @@ with tf.Session() as sess:
 
         if solved:
             break
-    saver.save(sess, save_path='../data/ft/cartpole.h')
+    tf_saver.save(sess, save_path='../data/ft/cartpole.h')
 
 plt.figure(figsize=(20, 10))
 non_zero_rewards = episode_rewards[:episode + 1]
