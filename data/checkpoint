@@ -1,2 +1,2 @@
-model_checkpoint_path: "mc.h"
-all_model_checkpoint_paths: "mc.h"
+model_checkpoint_path: "acrobot.h"
+all_model_checkpoint_paths: "acrobot.h"

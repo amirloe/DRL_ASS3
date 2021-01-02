@@ -45,11 +45,11 @@ class Actor:
             self.action = tf.placeholder(tf.int32, [self.action_size], name="action")
             self.learning_rate = tf.placeholder(tf.float32, name="learning_rate")
             self.R_t = tf.placeholder(tf.float32, name="total_rewards")
-            self.W1 = tf.get_variable("W1", [self.state_size, 24],
+            self.W1 = tf.get_variable("W1", [self.state_size, 32],
                                       initializer=tensorflow.initializers.variance_scaling(seed=0))
-            self.b1 = tf.get_variable("b1", [24], initializer=tf.zeros_initializer())
+            self.b1 = tf.get_variable("b1", [32], initializer=tf.zeros_initializer())
 
-            self.W2 = tf.get_variable("W2", [24, self.action_size],
+            self.W2 = tf.get_variable("W2", [32, self.action_size],
                                       initializer=tensorflow.initializers.variance_scaling(seed=0))
             self.b2 = tf.get_variable("b2", [self.action_size], initializer=tf.zeros_initializer())
 
@@ -87,10 +87,10 @@ class Critic:
             self.R_t = tf.placeholder(tf.float32, name="total_rewards")
             self.learning_rate = tf.placeholder(tf.float32, name="learning_rate")
 
-            self.W1 = tf.get_variable("W1", [self.state_size, 24],
+            self.W1 = tf.get_variable("W1", [self.state_size, 12],
                                       initializer=tensorflow.initializers.variance_scaling(seed=0))
-            self.b1 = tf.get_variable("b1", [24], initializer=tf.zeros_initializer())
-            self.W2 = tf.get_variable("W2", [24, 1], initializer=tensorflow.initializers.variance_scaling(seed=0))
+            self.b1 = tf.get_variable("b1", [12], initializer=tf.zeros_initializer())
+            self.W2 = tf.get_variable("W2", [12, 1], initializer=tensorflow.initializers.variance_scaling(seed=0))
             self.b2 = tf.get_variable("b2", [1], initializer=tf.zeros_initializer())
 
             self.Z1 = tf.add(tf.matmul(self.state, self.W1), self.b1)
@@ -142,9 +142,9 @@ action_size = 3
 max_episodes = 5000
 max_steps = 1000
 discount_factor = 0.99
-actor_lr = 0.0001
-critic_lr = 0.001
-learning_rate_decay = 0.97
+actor_lr = 0.0005
+critic_lr = 0.01
+learning_rate_decay = 1
 
 EXPLOITING_PHASE_LENGTH = 7
 epsilon = 1
@@ -161,6 +161,7 @@ start_time = time.time()
 
 
 with tf.Session() as sess:
+
     saver = tf.train.Saver()
     summary = tf.summary.FileWriter("../tensorboard/actor_critic/mc", sess.graph)
     # saver.restore(sess=sess, save_path='../data/cartpole/cartpole.h')
@@ -183,10 +184,10 @@ with tf.Session() as sess:
         done = False
         while not done and iter < max_steps:
             actions_distribution = sess.run(actor.actions_distribution, {actor.state: state})
-            if np.random.uniform(0, 1) < epsilon:
-                action = np.random.choice(range(len(actions_distribution)))
-            else:
-                action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
+            # if np.random.uniform(0, 1) < epsilon:
+            #     action = np.random.choice(range(len(actions_distribution)))
+            # else:
+            action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
             action_choices = [[-1.], [1.], [0.]]
 
             next_state, reward, done, _ = env.step(action_choices[action])
