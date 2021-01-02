@@ -60,8 +60,11 @@ class Actor:
             self.actions_distribution = tf.squeeze(tf.nn.softmax(self.output))
             self.neg_log_prob = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.output, labels=self.action)
             self.loss = tf.reduce_mean(self.neg_log_prob * self.R_t)
+            tvars = tf.trainable_variables()
+            trainable_vars = [var for var in tvars if '2' in var.name]
 
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss)
+
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss,var_list=trainable_vars)
 
     def predict(self, state):
         sess = tf.get_default_session()
@@ -98,7 +101,10 @@ class Critic:
             self.output = tf.add(tf.matmul(self.A1, self.W2), self.b2)
 
             self.square_loss = tf.squared_difference(tf.squeeze(self.output), self.R_t)
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.square_loss)
+
+            tvars = tf.trainable_variables()
+            trainable_vars = [var for var in tvars if '2' in var.name]
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.square_loss,var_list=trainable_vars)
 
     def predict(self, state):
         sess = tf.get_default_session()
@@ -149,7 +155,7 @@ learning_rate_decay = 1
 EXPLOITING_PHASE_LENGTH = 7
 epsilon = 1
 
-render = False
+render = True
 
 # Initialize the AC networks
 tf.reset_default_graph()
@@ -163,7 +169,7 @@ start_time = time.time()
 with tf.Session() as sess:
 
     saver = tf.train.Saver()
-    summary = tf.summary.FileWriter("../tensorboard/actor_critic/mc", sess.graph)
+    summary = tf.summary.FileWriter("../tensorboard/ft/cartpole_mc", sess.graph)
     # saver.restore(sess=sess, save_path='../data/cartpole/cartpole.h')
     sess.run(tf.global_variables_initializer())
     loader.load_weights(sess,actor,critic,'cartpole')
@@ -188,11 +194,13 @@ with tf.Session() as sess:
             #     action = np.random.choice(range(len(actions_distribution)))
             # else:
             action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
+            while action >= 2:
+                action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
             action_choices = [[-1.], [1.], [0.]]
 
             next_state, reward, done, _ = env.step(action_choices[action])
-
-
+            # print(f'Reward = {reward}')
+            # reward = -10 if reward == 0 else reward
             episode_rewards[episode] += reward
             next_state = np.append(next_state, np.zeros(6 - env.observation_space.shape[0]))
             next_state = scale_state(next_state.reshape([1, state_size]))
@@ -221,9 +229,9 @@ with tf.Session() as sess:
             action_one_hot[action] = 1
             train_actor_and_critic(actor, critic, state, next_state, done, reward, discount_factor,actor_lr,critic_lr,action_one_hot)
             if times_of_success_before_exploiting < EXPLOITING_PHASE_LENGTH:
-                epsilon = max(epsilon * 0.9999, 0.5)
+                epsilon = max(epsilon * 0.995, 0.5)
             else:
-                epsilon = max(epsilon * 0.9999, 0.05)
+                epsilon = max(epsilon * 0.995, 0.05)
             iter += 1
             if done:
                 episode_summary = tf.Summary()
@@ -239,7 +247,7 @@ with tf.Session() as sess:
                 print("Episode {} Reward: {} Average over 50 episodes: {}".format(episode, episode_rewards[episode],
                                                                                   round(average_rewards, 2)))
                 print(f"took total of {iter} iters")
-                if average_rewards   >= 88:
+                if episode_rewards[episode] >= 85:
                     print('Solved at episode: ' + str(episode))
                     elapsed_time = time.time() - start_time
                     print(f"elapsed_time: {elapsed_time}")

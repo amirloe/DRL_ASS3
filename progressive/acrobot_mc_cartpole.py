@@ -130,9 +130,9 @@ actual_actions_size = env.action_space.n
 max_episodes = 5000
 max_steps = 501
 discount_factor = 0.99
-actor_lr = 0.0005
+actor_lr = 0.005
 critic_lr = 0.01
-learning_rate_decay = 1
+learning_rate_decay = .99
 
 render = False
 
@@ -151,12 +151,12 @@ with tf.Session() as sess:
 
     actor = ProgActor(ac_actor, mc_actor, state_size, action_size, "cartpole_Pactor")
     critic = ProgCritic(ac_critic, mc_critic, state_size, critic_lr, 'cartpole_Pcritic')
-    tf_saver = tf.train.Saver()
 
     summary = tf.summary.FileWriter("../tensorboard/actor_critic/cartpole", sess.graph)
     sess.run(tf.global_variables_initializer())
     loader.load_weights(sess, ac_actor, ac_critic, 'acrobot')
     loader.load_weights(sess, mc_actor, mc_critic, 'mc')
+    tf_saver = tf.train.Saver()
     solved = False
 
     # First, generate some data for initial rewards training
@@ -206,7 +206,7 @@ with tf.Session() as sess:
                 if episode > 98:
                     # Check if solved
                     average_rewards = np.mean(episode_rewards[(episode - 99):episode + 1])
-                print("Episode {} Reward: {} Average over 1000 episodes: {}".format(episode, episode_rewards[episode],
+                print("Episode {} Reward: {} Average over 100 episodes: {}".format(episode, episode_rewards[episode],
                                                                                     round(average_rewards, 2)))
 
                 if average_rewards > 475:

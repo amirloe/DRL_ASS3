@@ -22,11 +22,14 @@ class ProgCritic:
             self.Z1 = tf.add(tf.matmul(self.state, self.W1), self.b1)
             self.A1 = tf.nn.relu(self.Z1)
 
-            self.output_in = tf.add(self.A1, tf.add(critic1.A1, critic2.A1))
-            self.output = tf.add(tf.matmul(self.output_in, self.W2), self.b2)
+            # self.output_in = tf.add(self.A1, tf.add(critic1.A1, critic2.A1))
+            self.output = tf.add(tf.matmul(self.A1, self.W2), self.b2)
+
+            self.test_out = tf.add(self.output, tf.add(critic1.output,critic2.output))
 
 
-            self.square_loss = tf.squared_difference(tf.squeeze(self.output), self.R_t)
+
+            self.square_loss = tf.squared_difference(tf.squeeze(self.test_out), self.R_t)
 
             tvars = tf.trainable_variables()
             trainable_vars = [var for var in tvars if name in var.name]

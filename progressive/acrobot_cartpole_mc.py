@@ -251,7 +251,7 @@ with tf.Session() as sess:
                 print("Episode {} Reward: {} Average over 50 episodes: {}".format(episode, episode_rewards[episode],
                                                                                   round(average_rewards, 2)))
                 print(f"took total of {iter} iters")
-                if average_rewards >= 88:
+                if average_rewards >= 80:
                     print('Solved at episode: ' + str(episode))
                     elapsed_time = time.time() - start_time
                     print(f"elapsed_time: {elapsed_time}")

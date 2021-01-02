@@ -39,7 +39,12 @@ class Actor:
             self.neg_log_prob = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.output, labels=self.action)
             self.loss = tf.reduce_mean(self.neg_log_prob * self.R_t)
 
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss)
+            tvars = tf.trainable_variables()
+            # trainable_vars = [var for var in tvars if '2' in var.name]
+            trainable_vars = tvars
+
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss,
+                                                                                               var_list=trainable_vars)
 
     def predict(self, state):
         sess = tf.get_default_session()
@@ -76,7 +81,11 @@ class Critic:
             self.output = tf.add(tf.matmul(self.A1, self.W2), self.b2)
 
             self.square_loss = tf.squared_difference(tf.squeeze(self.output), self.R_t)
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.square_loss)
+            tvars = tf.trainable_variables()
+            # trainable_vars = [var for var in tvars if '2' in var.name]
+            trainable_vars = tvars
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.square_loss,
+                                                                                               var_list=trainable_vars)
 
     def predict(self, state):
         sess = tf.get_default_session()
@@ -119,7 +128,7 @@ actual_actions_size = env.action_space.n
 
 max_episodes = 5000
 max_steps = 501
-discount_factor = 0.99
+discount_factor = 0.995
 actor_lr = 0.0005
 critic_lr = 0.01
 learning_rate_decay = 1
@@ -191,7 +200,7 @@ with tf.Session() as sess:
                 print("Episode {} Reward: {} Average over 100 episodes: {}".format(episode, episode_rewards[episode],
                                                                                     round(average_rewards, 2)))
 
-                if average_rewards > 475:
+                if average_rewards > 450:
                     print('Solved at episode: ' + str(episode))
                     elapsed_time = time.time() - start_time
                     print(f"elapsed_time: {elapsed_time}")
