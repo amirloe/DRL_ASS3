@@ -129,10 +129,10 @@ actual_actions_size = env.action_space.n
 
 max_episodes = 5000
 max_steps = 501
-discount_factor = 0.99
-actor_lr = 0.005
+discount_factor = 0.995
+actor_lr = 0.0005
 critic_lr = 0.01
-learning_rate_decay = .99
+learning_rate_decay = 1
 
 render = False
 
@@ -178,6 +178,7 @@ with tf.Session() as sess:
             action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
             while action >= actual_actions_size:
                 action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
+
             next_state, reward, done, _ = env.step(action)
             episode_rewards[episode] += reward
             reward = reward if not done else -10

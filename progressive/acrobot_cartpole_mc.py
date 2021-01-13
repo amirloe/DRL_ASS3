@@ -156,10 +156,10 @@ actor_lr = 0.0005
 critic_lr = 0.01
 learning_rate_decay = 1
 
-EXPLOITING_PHASE_LENGTH = 10
+EXPLOITING_PHASE_LENGTH = 7
 epsilon = 1
 
-render = False
+render = True
 
 # Initialize the AC networks
 tf.reset_default_graph()
@@ -200,7 +200,7 @@ with tf.Session() as sess:
             #     action = np.random.choice(range(len(actions_distribution)))
             # else:
             action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
-            action_choices = [[-1.], [1.], [0.]]
+            action_choices = [[-1.], [0.], [1.]]
 
             next_state, reward, done, _ = env.step(action_choices[action])
 
@@ -245,10 +245,10 @@ with tf.Session() as sess:
                 actor_lr = actor_lr * learning_rate_decay
                 critic_lr = critic_lr * learning_rate_decay
 
-                if episode > 50:
+                if episode > 20:
                     # Check if solved
-                    average_rewards = np.mean(episode_rewards[(episode - 49):episode + 1])
-                print("Episode {} Reward: {} Average over 50 episodes: {}".format(episode, episode_rewards[episode],
+                    average_rewards = np.mean(episode_rewards[(episode - 19):episode + 1])
+                print("Episode {} Reward: {} Average over 20 episodes: {}".format(episode, episode_rewards[episode],
                                                                                   round(average_rewards, 2)))
                 print(f"took total of {iter} iters")
                 if average_rewards >= 80:

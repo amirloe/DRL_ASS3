@@ -11,7 +11,7 @@ import loader
 tf.disable_v2_behavior()
 
 env = gym.make('MountainCarContinuous-v0')
-np.random.seed(1)
+np.random.seed(12)
 weights_initializer = tensorflow.initializers.GlorotUniform()
 
 def pad_state(state_to_pad):
@@ -46,7 +46,7 @@ class Actor:
             self.learning_rate = tf.placeholder(tf.float32, name="learning_rate")
             self.R_t = tf.placeholder(tf.float32, name="total_rewards")
             self.W1 = tf.get_variable("W1", [self.state_size, 32],
-                                      initializer=tensorflow.initializers.variance_scaling(seed=0))
+                                      initializer=tensorflow.initializers.variance_scaling(seed=123))
             self.b1 = tf.get_variable("b1", [32], initializer=tf.zeros_initializer())
 
             self.W2 = tf.get_variable("W2", [32, self.action_size],
@@ -91,7 +91,7 @@ class Critic:
             self.learning_rate = tf.placeholder(tf.float32, name="learning_rate")
 
             self.W1 = tf.get_variable("W1", [self.state_size, 12],
-                                      initializer=tensorflow.initializers.variance_scaling(seed=0))
+                                      initializer=tensorflow.initializers.variance_scaling(seed=123))
             self.b1 = tf.get_variable("b1", [12], initializer=tf.zeros_initializer())
             self.W2 = tf.get_variable("W2", [12, 1], initializer=tensorflow.initializers.variance_scaling(seed=0))
             self.b2 = tf.get_variable("b2", [1], initializer=tf.zeros_initializer())
@@ -155,7 +155,7 @@ learning_rate_decay = 1
 EXPLOITING_PHASE_LENGTH = 7
 epsilon = 1
 
-render = True
+render = False
 
 # Initialize the AC networks
 tf.reset_default_graph()

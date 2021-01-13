@@ -186,8 +186,8 @@ with tf.Session() as sess:
 
                 if episode > 98:
                     # Check if solved
-                    average_rewards = np.mean(episode_rewards[(episode - 99):episode + 1])
-                print("Episode {} Reward: {} Average over 1000 episodes: {}".format(episode, episode_rewards[episode],
+                    average_rewards = np.mean(episode_rewards[(episode - 49):episode + 1])
+                print("Episode {} Reward: {} Average over 50 episodes: {}".format(episode, episode_rewards[episode],
                                                                                     round(average_rewards, 2)))
 
                 if average_rewards > 475:
@@ -200,9 +200,10 @@ with tf.Session() as sess:
             iter += 1
 
         if solved:
+            tf_saver.save(sess, save_path='../data/cartpole/cartpole.h')
+            saver.save_weights(sess, actor, critic, "cartpole")
             break
-    tf_saver.save(sess, save_path='../data/cartpole/cartpole.h')
-    saver.save_weights(sess, actor, critic, "cartpole")
+
 
 plt.figure(figsize=(20, 10))
 non_zero_rewards = episode_rewards[:episode + 1]

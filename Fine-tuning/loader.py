@@ -15,12 +15,13 @@ def load_weights(sess, actor, critic, load_model_name):
                  feed_dict={weight_placeholder: np.load(f'../trained_models/{load_model_name}_{model_name}_b1.npy')})
 
 # TODO: REMIDER - I blank these lines because the worked asked to  initialize only the output layer weights
-        # weight_placeholder = tf.compat.v1.placeholder(tf.float32, tuple(model.W2.shape))
-        # assign_op = tf.compat.v1.assign(model.W2, weight_placeholder)
-        # sess.run(assign_op,
-        #          feed_dict={weight_placeholder: np.load(f'../trained_models/{load_model_name}_{model_name}_w2.npy')})
-        #
-        # weight_placeholder = tf.compat.v1.placeholder(tf.float32, tuple(model.b2.shape))
-        # assign_op = tf.compat.v1.assign(model.b2, weight_placeholder)
-        # sess.run(assign_op,
-        #          feed_dict={weight_placeholder: np.load(f'../trained_models/{load_model_name}_{model_name}_b2.npy')})
+
+#         weight_placeholder = tf.compat.v1.placeholder(tf.float32, tuple(model.W2.shape))
+#         assign_op = tf.compat.v1.assign(model.W2, weight_placeholder)
+#         sess.run(assign_op,
+#                  feed_dict={weight_placeholder: np.load(f'../trained_models/{load_model_name}_{model_name}_w2.npy')})
+#
+#         weight_placeholder = tf.compat.v1.placeholder(tf.float32, tuple(model.b2.shape))
+#         assign_op = tf.compat.v1.assign(model.b2, weight_placeholder)
+#         sess.run(assign_op,
+#                  feed_dict={weight_placeholder: np.load(f'../trained_models/{load_model_name}_{model_name}_b2.npy')})

@@ -9,9 +9,13 @@ import loader
 tf.disable_v2_behavior()
 
 env = gym.make('CartPole-v1')
-np.random.seed(1)
+np.random.seed(5)
 weights_initializer = tensorflow.initializers.GlorotUniform()
 
+
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    return np.exp(x) / np.sum(np.exp(x), axis=0)
 
 class Actor:
     def __init__(self, state_size, action_size, name='actor'):
@@ -35,7 +39,7 @@ class Actor:
             self.A1 = tf.nn.relu(self.Z1)
 
             self.output = tf.add(tf.matmul(self.A1, self.W2), self.b2)
-            self.actions_distribution = tf.squeeze(tf.nn.softmax(self.output))
+            self.actions_distribution = self.output
             self.neg_log_prob = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.output, labels=self.action)
             self.loss = tf.reduce_mean(self.neg_log_prob * self.R_t)
 
@@ -128,7 +132,7 @@ actual_actions_size = env.action_space.n
 
 max_episodes = 5000
 max_steps = 501
-discount_factor = 0.995
+discount_factor = 0.99
 actor_lr = 0.0005
 critic_lr = 0.01
 learning_rate_decay = 1
@@ -168,9 +172,14 @@ with tf.Session() as sess:
             predict_feed_dict = {actor.state: state}
             actions_distribution = sess.run(actor.actions_distribution, predict_feed_dict)
 
-            action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
-            while action >= actual_actions_size:
-                action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
+            action_squeeze = softmax(actions_distribution[0][:env.action_space.n])
+
+            if np.isnan(action_squeeze).any() or sum(action_squeeze) == 0:
+                action_squeeze = np.full(env.action_space.n, 1 / env.action_space.n)
+
+            action = np.random.choice(np.arange(env.action_space.n), p=action_squeeze)
+            #             while action >= actual_actions_size:
+            #                 action = np.random.choice(np.arange(len(actions_distribution)), p=actions_distribution)
             next_state, reward, done, _ = env.step(action)
             episode_rewards[episode] += reward
             reward = reward if not done else -10
@@ -194,10 +203,10 @@ with tf.Session() as sess:
                 actor_lr = actor_lr * learning_rate_decay
                 critic_lr = critic_lr * learning_rate_decay
 
-                if episode > 98:
+                if episode > 48:
                     # Check if solved
-                    average_rewards = np.mean(episode_rewards[(episode - 99):episode + 1])
-                print("Episode {} Reward: {} Average over 100 episodes: {}".format(episode, episode_rewards[episode],
+                    average_rewards = np.mean(episode_rewards[(episode - 49):episode + 1])
+                print("Episode {} Reward: {} Average over 50 episodes: {}".format(episode, episode_rewards[episode],
                                                                                     round(average_rewards, 2)))
 
                 if average_rewards > 450:
